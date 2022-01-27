@@ -212,10 +212,6 @@ protected:
 
 
 
-    virtual void  FillCheckBoxesChannel0();
-    virtual uint32_t ReadMDIORegister (int nPhy,int nReg);
-    virtual void WriteMDIORegister(int nPhy, int nReg, uint32_t data);
-
     QSerialPort m_serial;
 
     uint8_t m_receivedData [0x200];
@@ -235,23 +231,8 @@ public:
 
 
 private slots:
-    void on_m_btnOpenUART_clicked();
-    void readData();
 
     // QObject interface
-    void on_m_btnReadRegMDIO0_clicked();
-    void on_m_btnReadRegMDIO1_clicked();
-    void on_m_btnWriteRegMDIO0_clicked();
-    void on_m_btnWriteRegMDIO1_clicked();
-    void on_m_reset_phy_0_clicked();
-    void on_m_btnUpdateUi_0_clicked();
-    void on_m_cbTx0_100F_clicked();
-    void on_m_cbTx0_100H_clicked();
-    void on_m_cbTx0_10F_clicked();
-    void on_m_cbTx0_10H_clicked();
-    void on_m_cbAutoNeg_0_clicked();
-    void on_m_cbFullDuplex_0_clicked();
-    void on_m_comboSpeed_0_currentIndexChanged(int index);
     void on_m_btnOpenEthCard_clicked();
     void on_m_btnCloseEthCard_clicked();
     void on_m_btnSendPkt_clicked();
