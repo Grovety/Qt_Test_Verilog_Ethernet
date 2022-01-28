@@ -20,10 +20,16 @@ LIBS += -lWs2_32
 SOURCES += \
     crc32.cpp \
     main.cpp \
+    Dump/chunks.cpp \
+    Dump/commands.cpp \
+    Dump/qhexedit.cpp \
     dialog.cpp
 
 HEADERS += \
     MDIO_UART.h \
+    Dump/chunks.h \
+    Dump/commands.h \
+    Dump/qhexedit.h \
     crc32.h \
     dialog.h
 

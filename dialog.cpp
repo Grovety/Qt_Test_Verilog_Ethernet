@@ -740,37 +740,28 @@ void Dialog::on_m_btnCrewateTestPkt_clicked()
 
 }
 
-void Dialog::on_m_btnReadEeprom_clicked()
+void Dialog::on_m_btnReadEeprom_2_clicked()
 {
-    m_arpThread.m_pDialog = this;
-    m_arpThread.start(QThread::HighestPriority);
-
-    addrAndPort sourceParams;
-    sourceParams.mac = m_macSource;
-    sourceParams.ip = inet_addr("10.0.0.2");
-    sourceParams.port = 12345;
-
-    static const uint8_t fakeDestMac [6]={0x01,0x02,0x03,0x04,0x05,0x06};
-
-    addrAndPort destParams;
-    destParams.mac = (uint8_t*) fakeDestMac;
-    destParams.ip = inet_addr("10.0.0.3");
-    destParams.port = 12345;
-
     static const uint8_t pkt[] ={
-        0x02,0x00,0x00,0x00,0x00,0x00,0x00,0xe0,
-        0x4c,0x68,0x26,0x18,0x08,0x00,0x45,0x00,
-        0x00,0x31,0x2a,0x5d,0x00,0x00,0x80,0x11,
-        0x00,0x00,0xc0,0xa8,0x02,0x05,0xc0,0xa8,0x02,
-        0x80,0xd8,0xdd,0xEE,0xE0,0x00,0x1d,0x86,0x04,0x74,0x65,
-        0x73,0x74,0x74,0x65,0x73,0x74,0x74,0x65,0x73,0x74,0x74,
-        0x65,0x73,0x74,0x74,0x65,0x73,0x74,0x0a
+        0x02,0x00,0x00,0x00,0x00,0x00,0x00,0xe0,    // +0
+        0x4c,0x68,0x26,0x18,0x08,0x00,0x45,0x00,    // +8
+        0x00,0x31,0x2a,0x5d,0x00,0x00,0x80,0x11,    // + 0x10
+        0x00,0x00,0xc0,0xa8,0x02,0x05,0xc0,0xa8,    // + 0x18
+        0x02,0x80,0xd8,0xdd,0xEE,0xE0,0x00,0x1d,    // + 0x20
+        0x86,0x04,0x74,0x65,0x73,0x74,0x74,0x65,    // + 0x28
+        0x73,0x74,0x74,0x65,0x73,0x74,0x74,0x65,    // + 0x30
+        0x73,0x74,0x74,0x65,0x73,0x74,0x0a
     };
+
+    int addr = ui->m_editEepromAddr->text().toULong(nullptr,0);
+
     udpData udpData;
     udpData.SetUserSize(sizeof(pkt)-42);
     memcpy (udpData.m_pData,pkt,sizeof(pkt));
     udpData.m_pData[0x12] = (uint8_t) (m_pktId / 0x100);
     udpData.m_pData[0x13] = (uint8_t) m_pktId;
+
+    *((DWORD*)(udpData.m_pData+0x2a)) = addr;
     m_pktId += 1;
 
     unsigned short UDPChecksum = CalculateUDPChecksum(udpData);
@@ -779,17 +770,29 @@ void Dialog::on_m_btnReadEeprom_clicked()
     unsigned short IPChecksum = htons(CalculateIPChecksum(udpData/*,TotalLen,0x1337,source.ip,destination.ip*/));
     memcpy((void*)(udpData.m_pData+24),(void*)&IPChecksum,2);
 
-    udpData.SaveToFile("udpPacket.txt");
+//    udpData.SaveToFile("udpPacket.txt");
 
     pcap_sendpacket(m_hCardSource,udpData.m_pData,udpData.m_totalDataSize);
 
-    Sleep (500);
-    if (m_rcvThread.isRunning())
+    // Todo Catch timeout
+    while (true)
     {
-        m_rcvThread.requestInterruption();
+        pcap_pkthdr *header;
+        const u_char * pData;
+        int res = pcap_next_ex(m_hCardSource, &header, &pData);
+        if (res == 1)
+        {
+            // Check Destination IP TODO
+
+            // Check Destination Port
+            int destPort = *((uint16_t*)(pData+0x24));
+            if (destPort!=0xe1ee)
+            {
+                continue;
+            }
+            QByteArray ar ((const char*)(pData+0x2a),(int)(header->len-0x2a));
+            ui->m_eepromDump->setData(ar);
+            break;
+        }
     }
-
-
-//    }
-
 }

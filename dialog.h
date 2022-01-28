@@ -239,6 +239,6 @@ private slots:
     void on_pushButton_clicked();
     void on_m_btnExportBad_clicked();
     void on_m_btnCrewateTestPkt_clicked();
-    void on_m_btnReadEeprom_clicked();
+    void on_m_btnReadEeprom_2_clicked();
 };
 #endif // DIALOG_H
