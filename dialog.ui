@@ -51,6 +51,13 @@
           </widget>
          </item>
          <item>
+          <widget class="QPushButton" name="m_btnEraseEeprom">
+           <property name="text">
+            <string>Erase EEPROM</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QLabel" name="label">
            <property name="text">
             <string>Address:</string>
@@ -66,7 +73,7 @@
             </size>
            </property>
            <property name="text">
-            <string>0x0</string>
+            <string>0x1f000</string>
            </property>
           </widget>
          </item>

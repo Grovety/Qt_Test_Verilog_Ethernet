@@ -240,5 +240,7 @@ private slots:
     void on_m_btnExportBad_clicked();
     void on_m_btnCrewateTestPkt_clicked();
     void on_m_btnReadEeprom_2_clicked();
+    void on_m_btnWriteEeprom_clicked();
+    void on_m_btnEraseEeprom_clicked();
 };
 #endif // DIALOG_H
