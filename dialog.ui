@@ -98,6 +98,13 @@
           </widget>
          </item>
          <item>
+          <widget class="QPushButton" name="m_btnCreateDhcpTemplete">
+           <property name="text">
+            <string>DHCP Templete</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <spacer name="horizontalSpacer">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
