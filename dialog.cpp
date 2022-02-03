@@ -740,7 +740,7 @@ void Dialog::on_m_btnCrewateTestPkt_clicked()
 
 }
 
-void Dialog::on_m_btnReadEeprom_2_clicked()
+bool Dialog::ReadEeprom(int addr, int size, QByteArray &data)
 {
     static const uint8_t pkt[] ={
         0x02,0x00,0x00,0x00,0x00,0x00,0x00,0xe0,    // +0
@@ -753,84 +753,144 @@ void Dialog::on_m_btnReadEeprom_2_clicked()
         0x73,0x74,0x74,0x65,0x73,0x74,0x0a
     };
 
-    int addr = ui->m_editEepromAddr->text().toULong(nullptr,0);
-
     udpData udpData;
     udpData.SetUserSize(sizeof(pkt)-42);
     memcpy (udpData.m_pData,pkt,sizeof(pkt));
-    udpData.m_pData[0x12] = (uint8_t) (m_pktId / 0x100);
-    udpData.m_pData[0x13] = (uint8_t) m_pktId;
 
-    *((DWORD*)(udpData.m_pData+0x2a)) = addr;
-    m_pktId += 1;
 
-    unsigned short UDPChecksum = CalculateUDPChecksum(udpData);
-    memcpy((void*)(udpData.m_pData+40),(void*)&UDPChecksum,2);
-
-    unsigned short IPChecksum = htons(CalculateIPChecksum(udpData/*,TotalLen,0x1337,source.ip,destination.ip*/));
-    memcpy((void*)(udpData.m_pData+24),(void*)&IPChecksum,2);
-
-    udpData.SaveToFile("udpPacket.txt");
-
-    pcap_sendpacket(m_hCardSource,udpData.m_pData,udpData.m_totalDataSize);
-
-    // Todo Catch timeout
-    while (true)
+    int offset = 0;
+    data.resize(size);
+    while (size > 0)
     {
-        pcap_pkthdr *header;
-        const u_char * pData;
-        int res = pcap_next_ex(m_hCardSource, &header, &pData);
-        if (res == 1)
-        {
-            // Check Destination IP TODO
+        *((DWORD*)(udpData.m_pData+0x2a)) = addr;
+        m_pktId += 1;
+        udpData.m_pData[0x12] = (uint8_t) (m_pktId / 0x100);
+        udpData.m_pData[0x13] = (uint8_t) m_pktId;
 
-            // Check Destination Port
-            int destPort = *((uint16_t*)(pData+0x24));
-            if (destPort!=0xe1ee)
+        unsigned short UDPChecksum = CalculateUDPChecksum(udpData);
+        memcpy((void*)(udpData.m_pData+40),(void*)&UDPChecksum,2);
+
+        unsigned short IPChecksum = htons(CalculateIPChecksum(udpData/*,TotalLen,0x1337,source.ip,destination.ip*/));
+        memcpy((void*)(udpData.m_pData+24),(void*)&IPChecksum,2);
+
+        //    udpData.SaveToFile("udpPacket.txt");
+
+        pcap_sendpacket(m_hCardSource,udpData.m_pData,udpData.m_totalDataSize);
+
+        QTimer timeOut;
+        timeOut.start (1000);
+        // Todo Catch timeout
+        while (true)
+        {
+            if (timeOut.remainingTime()==0)
             {
-                continue;
+                return false;
             }
-            QByteArray ar ((const char*)(pData+0x2a),(int)(header->len-0x2a));
-            ui->m_eepromDump->setData(ar);
-            break;
+            pcap_pkthdr *header;
+            const u_char * pData;
+            int res = pcap_next_ex(m_hCardSource, &header, &pData);
+            if (res == 1)
+            {
+                // Check Destination IP TODO
+
+                // Check Destination Port
+                int destPort = *((uint16_t*)(pData+0x24));
+                if (destPort!=0xe1ee)
+                {
+                    continue;
+                }
+                int lenForCpy = (int)(header->len-0x2a);
+                if (size < lenForCpy)
+                {
+                    lenForCpy = size;
+                }
+                memcpy (((void*)(data.constData()+offset)),(const char*)(pData+0x2a),lenForCpy);
+                break;
+            }
         }
+        addr += 0x80;
+        offset += 0x80;
+        size -= 0x80;
     }
 }
-
-void Dialog::on_m_btnWriteEeprom_clicked()
+bool Dialog::WriteEeprom(int addr, int size, const char* data)
 {
     static const uint8_t pkt[] ={
         0x02,0x00,0x00,0x00,0x00,0x00,0x00,0xe0,    // +0
         0x4c,0x68,0x26,0x18,0x08,0x00,0x45,0x00,    // +8
         0x00,0x31,0x2a,0x5d,0x00,0x00,0x80,0x11,    // + 0x10
         0x00,0x00,0xc0,0xa8,0x02,0x05,0xc0,0xa8,    // + 0x18
-        0x02,0x80,0xd8,0xdd,0xEE,0xE2,0x00,0x1d,    // + 0x20       // Port 0xeee2
+        0x02,0x80,0xd8,0xdd,0xEE,0xE2,0x00,0x8B,    // + 0x20
         0x86,0x04,0x74,0x65,0x73,0x74,0x74,0x65,    // + 0x28
         0x73,0x74,0x74,0x65,0x73,0x74,0x74,0x65,    // + 0x30
         0x73,0x74,0x74,0x65,0x73,0x74,0x0a
     };
 
-    int addr = ui->m_editEepromAddr->text().toULong(nullptr,0);
-
     udpData udpData;
-    udpData.SetUserSize(sizeof(pkt)-42);
+    udpData.SetUserSize(0x83);
     memcpy (udpData.m_pData,pkt,sizeof(pkt));
-    udpData.m_pData[0x12] = (uint8_t) (m_pktId / 0x100);
-    udpData.m_pData[0x13] = (uint8_t) m_pktId;
 
-    *((DWORD*)(udpData.m_pData+0x2a)) = addr;
-    m_pktId += 1;
 
-    unsigned short UDPChecksum = CalculateUDPChecksum(udpData);
-    memcpy((void*)(udpData.m_pData+40),(void*)&UDPChecksum,2);
+    int offset = 0;
+    while (size > 0)
+    {
+        m_pktId += 1;
+        udpData.m_pData[0x12] = (uint8_t) (m_pktId / 0x100);
+        udpData.m_pData[0x13] = (uint8_t) m_pktId;
+        int lenForCopy = 0x80;
+        if (size < lenForCopy)
+        {
+            lenForCopy = size;
+        }
+        *((DWORD*)(udpData.m_pData+0x2a)) = addr;
+        memcpy (udpData.m_pUserData+3,data+offset,lenForCopy);
+        udpData.m_pData [0x27] = lenForCopy+3+8;
+        int totalIpLenght = lenForCopy + 28 + 3;
+        udpData.m_pData [0x10] = (uint8_t)(totalIpLenght / 0x100);
+        udpData.m_pData [0x11] = (uint8_t)(totalIpLenght / 0x1);
 
-    unsigned short IPChecksum = htons(CalculateIPChecksum(udpData/*,TotalLen,0x1337,source.ip,destination.ip*/));
-    memcpy((void*)(udpData.m_pData+24),(void*)&IPChecksum,2);
+        unsigned short UDPChecksum = CalculateUDPChecksum(udpData);
+        memcpy((void*)(udpData.m_pData+40),(void*)&UDPChecksum,2);
 
-    udpData.SaveToFile("udpWriteEeprom.txt");
+        unsigned short IPChecksum = htons(CalculateIPChecksum(udpData/*,TotalLen,0x1337,source.ip,destination.ip*/));
+        memcpy((void*)(udpData.m_pData+24),(void*)&IPChecksum,2);
 
-    pcap_sendpacket(m_hCardSource,udpData.m_pData,udpData.m_totalDataSize);
+        //    udpData.SaveToFile("udpPacket.txt");
 
+        pcap_sendpacket(m_hCardSource,udpData.m_pData,udpData.m_totalDataSize);
+
+        addr += 0x80;
+        offset += 0x80;
+        size -= 0x80;
+        Sleep (10);
+    }
+}
+
+
+void Dialog::on_m_btnReadEeprom_2_clicked()
+{
+    int addr = ui->m_editEepromAddr->text().toULong(nullptr,0);
+    int size = ui->m_editEepromSize->text().toULong(nullptr,0);
+    QByteArray ar;
+    if (ReadEeprom(addr,size,ar))
+    {
+        ui->m_eepromDump->setData(ar);
+    } else
+    {
+        QMessageBox::critical(this,"Error","Cannot Read Eeprom");
+    }
+}
+
+void Dialog::on_m_btnWriteEeprom_clicked()
+{
+    int addr = ui->m_editEepromAddr->text().toULong(nullptr,0);
+    int size = ui->m_editEepromSize->text().toULong(nullptr,0);
+    QByteArray ar = ui->m_eepromDump->data();
+    const char* data = ar.constData();
+    if (!WriteEeprom(addr,size,data))
+    {
+        QMessageBox::critical(this,"Error","Cannot Write Eeprom");
+    }
 }
 
 void Dialog::on_m_btnEraseEeprom_clicked()

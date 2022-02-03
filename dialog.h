@@ -164,6 +164,8 @@ public:
     };
 
 
+    virtual bool ReadEeprom (int addr,int size, QByteArray& data);
+    virtual bool WriteEeprom (int addr,int size, const char* data);
 private:
     Ui::Dialog *ui;
 
