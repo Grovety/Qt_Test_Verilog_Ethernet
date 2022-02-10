@@ -22,11 +22,10 @@ Dialog::Dialog(QWidget *parent)
     QString defaultPortName = settings.value("Name",QVariant("Nothing")).toString();
     settings.endGroup();
 
-
     QStringList horzHeaders;
-    horzHeaders << "Human Name" << "System Name";
-
-    ui->m_listEthCardNames->setColumnCount(2);
+    horzHeaders << "Human Name" << "System Name" << "IP address";
+    ui->m_listEthCardNames->setColumnCount(3);
+    ui->m_listEthCardNames->hideColumn(2);
     ui->m_listEthCardNames->setHorizontalHeaderLabels( horzHeaders );
     ui->m_listEthCardNames->horizontalHeader()->setSectionResizeMode(0,QHeaderView::ResizeToContents);
     ui->m_listEthCardNames->horizontalHeader()->setSectionResizeMode(1,QHeaderView::Stretch);
@@ -40,7 +39,6 @@ Dialog::Dialog(QWidget *parent)
     static char errbuf[PCAP_ERRBUF_SIZE];
     if (pcap_findalldevs(&alldevs, errbuf) != -1)
     {
-
         int i = 0;
         for(pcap_if_t *d = alldevs; d != NULL; d = d->next)
         {
@@ -55,13 +53,22 @@ Dialog::Dialog(QWidget *parent)
                 ui->m_listEthCardNames->selectRow(i);
             }
 
+            char* tmp_adr = d->addresses->next->addr->sa_data;
+            QString tmpAddress = QString("%1.%2.%3.%4")
+                                    .arg(tmp_adr[2])
+                                    .arg(tmp_adr[3])
+                                    .arg(tmp_adr[4])
+                                    .arg(tmp_adr[5]);
+
+            newItem = new QTableWidgetItem (tmpAddress);
+            ui->m_listEthCardNames->setItem(i,2,newItem);
+
             i += 1;
         }
         pcap_freealldevs(alldevs);
     }
     m_nSendPktCnt = 0;
     m_dataForSend = 0;
-
     m_pktId = 1234;
 }
 
@@ -87,7 +94,7 @@ void Dialog::on_m_btnOpenEthCard_clicked()
     char errbuf[PCAP_ERRBUF_SIZE];
 
 
-    QString srcDescription = ui->m_listEthCardNames->item(srcRow,0)->text();
+    //QString srcDescription = ui->m_listEthCardNames->item(srcRow,0)->text();
     QTableWidgetItem* srcItem =  ui->m_listEthCardNames->item(srcRow,1);
     m_hCardSource = pcap_open_live(srcItem->text().toLatin1(), 65536, 1, -1, errbuf);
     if (m_hCardSource == 0)
@@ -95,12 +102,22 @@ void Dialog::on_m_btnOpenEthCard_clicked()
         QMessageBox::critical(this,"Open Source Adapter Error",errbuf);
         return;
     }
-
+    QString tmpAddress = ui->m_listEthCardNames->item(srcRow,2)->text();
+    if (tmpAddress.isEmpty()) {
+        m_localIp [0] = 192;
+        m_localIp [1] = 168;
+        m_localIp [2] = 2;
+        m_localIp [3] = 6;
+    }
+    else {
+        m_localIp [0] = tmpAddress[0].unicode();
+        m_localIp [1] = tmpAddress[2].unicode();
+        m_localIp [2] = tmpAddress[4].unicode();
+        m_localIp [3] = tmpAddress[6].unicode();
+    }
 
     PPACKET_OID_DATA pOidData;
     CHAR pAddr[512];
-
-
 
     ZeroMemory(pAddr, sizeof(pAddr));
     pOidData = (PPACKET_OID_DATA) pAddr;
@@ -111,11 +128,6 @@ void Dialog::on_m_btnOpenEthCard_clicked()
     {
         memcpy(m_macSource, pOidData->Data, 6);
     }
-
-    m_localIp [0] = 192;
-    m_localIp [1] = 168;
-    m_localIp [2] = 2;
-    m_localIp [3] = 6;
 
     PacketCloseAdapter(pADP);
 
