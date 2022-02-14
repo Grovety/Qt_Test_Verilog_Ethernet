@@ -245,5 +245,6 @@ private slots:
     void on_m_btnWriteEeprom_clicked();
     void on_m_btnEraseEeprom_clicked();
     void on_m_btnCreateDhcpTemplete_clicked();
+    void on_m_btnSendDHCPOffer_clicked();
 };
 #endif // DIALOG_H

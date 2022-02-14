@@ -214,6 +214,13 @@
         </widget>
        </item>
        <item>
+        <widget class="QPushButton" name="m_btnSendDHCPOffer">
+         <property name="text">
+          <string>Send DHCP Offer</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <spacer name="verticalSpacer">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
