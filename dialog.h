@@ -11,6 +11,8 @@
 #include <QFile>
 
 class Dialog;
+class QUdpSocket;
+class QHostAddress;
 
 class receivedPacket
 {
@@ -184,6 +186,8 @@ protected:
 
     int m_nSendPktCnt;
     udpData* m_dataForSend;
+    QUdpSocket* m_udpSocket;
+    QHostAddress* m_ourAddress;
 
     unsigned short BytesTo16(unsigned char X,unsigned char Y)
     {

@@ -9,7 +9,9 @@
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QFile>
+#include <QUdpSocket>
 #include "Win32-Extensions.h"
+
 
 Dialog::Dialog(QWidget *parent)
     : QDialog(parent)
@@ -21,6 +23,10 @@ Dialog::Dialog(QWidget *parent)
     settings.beginGroup( "DefaultPort" );
     QString defaultPortName = settings.value("Name",QVariant("Nothing")).toString();
     settings.endGroup();
+
+    m_udpSocket = new QUdpSocket(this);
+    QString address = "192.168.2.6";
+    m_ourAddress = new QHostAddress(address);
 
     QStringList horzHeaders;
     horzHeaders << "Human Name" << "System Name" << "IP address";
@@ -82,6 +88,8 @@ Dialog::~Dialog()
     {
         delete[] m_dataForSend;
     }
+    delete m_udpSocket;
+    delete m_ourAddress;
 }
 
 
@@ -138,6 +146,9 @@ void Dialog::on_m_btnOpenEthCard_clicked()
     settings.beginGroup( "DefaultCards" );
     settings.setValue( "Source", srcItem->text() );
     settings.endGroup();
+
+
+
 
     ui->m_listEthCardNames->setEnabled(false);
     ui->m_btnCloseEthCard->setEnabled(true);
@@ -872,8 +883,10 @@ bool Dialog::WriteEeprom(int addr, int size, const char* data)
         memcpy((void*)(udpData.m_pData+24),(void*)&IPChecksum,2);
 
         //    udpData.SaveToFile("udpPacket.txt");
-
-        pcap_sendpacket(m_hCardSource,udpData.m_pData,totalIpLenght+0x0e/*udpData.m_totalDataSize*/);
+        m_udpSocket->bind(*m_ourAddress, 1234);
+        QByteArray data((char*)(udpData.m_pData), udpData.m_userSize);
+        m_udpSocket->writeDatagram(data, *m_ourAddress, 1234);
+        //pcap_sendpacket(m_hCardSource,udpData.m_pData,totalIpLenght+0x0e/*udpData.m_totalDataSize*/);
 
         addr += 0x80;
         offset += 0x80;
